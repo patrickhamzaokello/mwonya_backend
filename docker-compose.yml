@@ -1,0 +1,184 @@
+name: mwonya_backend_project
+
+networks:
+  mwonya_network:
+    driver: bridge
+  shared-pk-network:
+    external: true
+    name: shared-pk-network
+
+volumes:
+  postgres_data:
+    driver: local
+  static_files:
+    driver: local
+  media_files:
+    driver: local
+  redis_data:
+    driver: local
+
+services:
+  postgres_db:
+    image: postgres:16-bookworm
+    container_name: mwonya_postgres_container
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5432:5432'  # ← CHANGED: Only accessible from localhost
+    networks:
+      - mwonya_network
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mwonya}
+      POSTGRES_USER: ${POSTGRES_USER:-mwonya_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mwonya_user} -d ${POSTGRES_DB:-mwonya}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mwonya_backend_app:
+    image: mwonya_backend_image
+    container_name: mwonya_backend_container
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /django.sh
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mwonya_network
+      - shared-pk-network
+    ports:
+      - "${APP_PORT:-6200}:6200"
+    volumes:
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-mwonya_user}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB:-mwonya}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "check", "--database", "default"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:alpine
+    container_name: mwonya_redis_container
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"  # ← CHANGED: Also secure Redis
+    networks:
+      - mwonya_network
+    volumes:
+      - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  celery:
+    image: mwonya_backend_image
+    container_name: mwonya_celery_container
+    command: celery -A mwonya_core worker -E -l info
+    restart: unless-stopped
+    volumes:
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+      - ./logs:/app/logs
+    depends_on:
+      - postgres_db
+      - redis
+      - mwonya_backend_app
+    networks:
+      - mwonya_network
+      - shared-pk-network
+    env_file:
+      - .env
+
+  flower:
+    image: mwonya_backend_image
+    container_name: mwonya_flower_container
+    restart: unless-stopped
+    command: celery -A mwonya_core flower --basic_auth=admin:password123
+    ports:
+      - "127.0.0.1:5555:5555"  # ← CHANGED: Secure Flower too
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - mwonya_network
+    env_file:
+      - .env
+
+  beat:
+    image: mwonya_backend_image
+    container_name: mwonya_beat_container
+    restart: unless-stopped
+    command: celery -A mwonya_core beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+      - ./logs:/app/logs
+    networks:
+      - mwonya_network
+      - shared-pk-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      mwonya_backend_app:
+        condition: service_healthy
+    env_file:
+      - .env
