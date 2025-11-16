@@ -8,8 +8,6 @@ networks:
     name: shared-pk-network
 
 volumes:
-  postgres_data:
-    driver: local
   static_files:
     driver: local
   media_files:
@@ -18,42 +16,6 @@ volumes:
     driver: local
 
 services:
-  postgres_db:
-    image: postgres:16-bookworm
-    container_name: mwonya_postgres_container
-    restart: unless-stopped
-    ports:
-      - '127.0.0.1:5432:5432'  # ← CHANGED: Only accessible from localhost
-    networks:
-      - mwonya_network
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-mwonya}
-      POSTGRES_USER: ${POSTGRES_USER:-mwonya_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mwonya_user} -d ${POSTGRES_DB:-mwonya}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '0.5'
-        reservations:
-          memory: 256M
-          cpus: '0.25'
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
   mwonya_backend_app:
     image: mwonya_backend_image
     container_name: mwonya_backend_container
@@ -62,8 +24,6 @@ services:
       dockerfile: Dockerfile
     command: /django.sh
     depends_on:
-      postgres_db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -77,8 +37,6 @@ services:
       - ./logs:/app/logs
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-mwonya_user}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB:-mwonya}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "manage.py", "check", "--database", "default"]
@@ -139,7 +97,6 @@ services:
       - media_files:/app/media
       - ./logs:/app/logs
     depends_on:
-      - postgres_db
       - redis
       - mwonya_backend_app
     networks:

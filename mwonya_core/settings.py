@@ -282,7 +282,7 @@ LOGGING = {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': 'news_scrapping.log',
+            'filename': 'mwonya_backend.log',
             'formatter': 'verbose',
         },
         'console': {
