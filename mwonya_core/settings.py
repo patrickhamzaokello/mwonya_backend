@@ -21,6 +21,7 @@ ALLOWED_HOSTS = [
     'api.mwonya.com',
     'localhost',
     '127.0.0.1'
+    'audio.mwonya.com'
 ]
 GOOGLE_CLIENT_IDS = [
     WEB_GOOGLE_CLIENT_ID,  # Web client
@@ -160,7 +161,8 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = FILE_UPLOAD_MAX_MEMORY_SIZE
 CORS_ORIGIN_WHITELIST = [
     "http://localhost:8000",
     "https://api.mwonya.com",
-    "http://127.0.0.1:8080"
+    "http://127.0.0.1:8080",
+    "https://audio.mwonya.com"
 ]
 
 CORS_ORIGIN_REGEX_WHITELIST = [
