@@ -49,7 +49,7 @@ urlpatterns = [
     path('auth/', include('mwonya_apps.authentication.urls')),
     path('social_auth/', include(('mwonya_apps.social_auth.urls', 'social_auth'), namespace="social_auth")),
 
-    # path('creator/', include(('mwonya_apps.creator.urls', 'creator_app'), namespace="creator_app")),
+    path('creator/', include(('mwonya_apps.creator.urls', 'creator_app'), namespace="creator_app")),
     # path('streaming/', include(('mwonya_apps.streaming.urls', 'streaming_app'), namespace="streaming_app")),
 
 ]

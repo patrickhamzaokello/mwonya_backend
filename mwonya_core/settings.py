@@ -53,13 +53,14 @@ THIRD_PARTY_APPS = [
     'drf_yasg',
     'django_celery_results',
     'django_celery_beat'
+    'django_filters',
 ]
 
 
 LOCAL_APPS = [
     'mwonya_apps.authentication',
     'mwonya_apps.social_auth',
-    # 'mwonya_apps.creator',
+    'mwonya_apps.creator',
     # 'mwonya_apps.streaming'
 ]
 
