@@ -30,7 +30,7 @@ services:
       - mwonya_network
       - shared-pk-network
     ports:
-      - "${APP_PORT:-6200}:6200"
+      - "${APP_PORT:-8200}:8200"
     volumes:
       - static_files:/app/staticfiles
       - media_files:/app/media
@@ -64,7 +64,7 @@ services:
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
     restart: unless-stopped
     ports:
-      - "127.0.0.1:6379:6379"  # ← CHANGED: Also secure Redis
+      - "127.0.0.1:8379:8379"  # ← CHANGED: Also secure Redis
     networks:
       - mwonya_network
     volumes:
@@ -111,7 +111,7 @@ services:
     restart: unless-stopped
     command: celery -A mwonya_core flower --basic_auth=admin:password123
     ports:
-      - "127.0.0.1:5555:5555"  # ← CHANGED: Secure Flower too
+      - "127.0.0.1:8555:8555"  # ← CHANGED: Secure Flower too
     depends_on:
       redis:
         condition: service_healthy
