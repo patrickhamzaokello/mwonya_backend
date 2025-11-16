@@ -33,7 +33,7 @@ GOOGLE_CLIENT_IDS = [
 APPLE_CLIENT_ID = "com.apps.mwonya"
 APPLE_CLIENT_IDS = ["com.apps.mwonya", "other.client.id"]  # List of valid client IDs
 
-CSRF_TRUSTED_ORIGINS = ["https://api.mwonya.com"]
+CSRF_TRUSTED_ORIGINS = ["https://audio.mwonya.com"]
 
 AUTH_USER_MODEL = 'authentication.User'
 # Application definition
