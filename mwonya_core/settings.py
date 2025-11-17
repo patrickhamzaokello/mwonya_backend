@@ -20,7 +20,7 @@ ANDROID_GOOGLE_CLIENT_ID = config('ANDROID_GOOGLE_CLIENT_ID')
 ALLOWED_HOSTS = [
     'api.mwonya.com',
     'localhost',
-    '127.0.0.1'
+    '127.0.0.1',
     'audio.mwonya.com'
 ]
 GOOGLE_CLIENT_IDS = [
