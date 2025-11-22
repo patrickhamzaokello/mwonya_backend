@@ -1,17 +1,45 @@
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-import uuid
 from mwonya_apps.authentication.models import User
+
+from django.core.validators import FileExtensionValidator
+
+from mwonya_core import settings
+from mwonya_apps.creator.utils.file_handlers import (
+    generate_track_path,
+    track_cover_path,
+    album_cover_path,
+    artist_profile_path,
+    artist_cover_path,
+    podcast_cover_path,
+    playlist_cover_path
+)
+from mwonya_apps.creator.utils.storage import get_storage_backend
+import uuid
 
 
 class Artist(models.Model):
-    """Model for music artists and podcast hosts"""
+    """Updated Artist model with proper file paths"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='artist_profile', null=True, blank=True)
     stage_name = models.CharField(max_length=255, unique=True, db_index=True)
     bio = models.TextField(blank=True, null=True)
-    profile_image = models.ImageField(upload_to='artists/profiles/', blank=True, null=True)
-    cover_image = models.ImageField(upload_to='artists/covers/', blank=True, null=True)
+
+    # Updated image fields with custom upload paths and storage
+    profile_image = models.ImageField(
+        upload_to=artist_profile_path,
+        blank=True,
+        null=True,
+        storage=get_storage_backend('image'),
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+    cover_image = models.ImageField(
+        upload_to=artist_cover_path,
+        blank=True,
+        null=True,
+        storage=get_storage_backend('image'),
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+
     is_verified = models.BooleanField(default=False)
     monthly_listeners = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -19,10 +47,6 @@ class Artist(models.Model):
 
     class Meta:
         ordering = ['-monthly_listeners', 'stage_name']
-        indexes = [
-            models.Index(fields=['stage_name']),
-            models.Index(fields=['-monthly_listeners']),
-        ]
 
     def __str__(self):
         return self.stage_name
@@ -45,7 +69,7 @@ class Genre(models.Model):
 
 
 class Track(models.Model):
-    """Unified model for all audio content (music tracks and podcast episodes)"""
+    """Updated Track model with proper file paths"""
     CONTENT_TYPE_CHOICES = [
         ('music', 'Music'),
         ('podcast', 'Podcast Episode'),
@@ -63,60 +87,77 @@ class Track(models.Model):
     slug = models.SlugField(max_length=255, blank=True)
     content_type = models.CharField(max_length=20, choices=CONTENT_TYPE_CHOICES, default='music')
 
-    # Main artist/creator
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='tracks')
-
-    # Featured artists (for collaborations)
     featured_artists = models.ManyToManyField(Artist, related_name='featured_tracks', blank=True)
 
-    # Audio files
-    audio_file = models.FileField(upload_to='tracks/original/', blank=True, null=True)  # Original upload
-    hls_manifest = models.FileField(upload_to='tracks/hls/', blank=True, null=True)  # HLS manifest file
+    # Audio files with custom storage
+    audio_file = models.FileField(
+        upload_to=generate_track_path,
+        blank=True,
+        null=True,
+        storage=get_storage_backend('raw'),
+        validators=[FileExtensionValidator(allowed_extensions=['mp3', 'm4a', 'wav', 'flac', 'aac', 'ogg'])],
+        help_text="Original uploaded audio file"
+    )
+
+    # HLS manifest path (stored as relative path)
+    hls_manifest = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="Relative path to HLS manifest file"
+    )
     hls_processed = models.BooleanField(default=False)
 
-    # Track metadata
     duration = models.PositiveIntegerField(help_text="Duration in seconds", null=True, blank=True)
-    isrc = models.CharField(max_length=12, blank=True, null=True, unique=True,
-                            help_text="International Standard Recording Code")
+    isrc = models.CharField(max_length=12, blank=True, null=True, unique=True)
 
-    # Cover art
-    cover_art = models.ImageField(upload_to='tracks/covers/', blank=True, null=True)
+    # Cover art with custom storage
+    cover_art = models.ImageField(
+        upload_to=track_cover_path,
+        blank=True,
+        null=True,
+        storage=get_storage_backend('image'),
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
 
-    # Categorization
     genres = models.ManyToManyField(Genre, related_name='tracks', blank=True)
 
-    # Counts
     play_count = models.PositiveIntegerField(default=0)
     like_count = models.PositiveIntegerField(default=0)
     comment_count = models.PositiveIntegerField(default=0)
 
-    # Review and processing status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
     review_notes = models.TextField(blank=True, null=True)
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='reviewed_tracks')
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
-    # Release settings
     is_explicit = models.BooleanField(default=False)
     release_date = models.DateField(null=True, blank=True)
     is_public = models.BooleanField(default=True)
 
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['content_type', 'status']),
-            models.Index(fields=['-play_count']),
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['artist', '-created_at']),
-        ]
 
     def __str__(self):
         return f"{self.title} - {self.artist.stage_name}"
+
+    def get_hls_url(self):
+        """Get the URL to the HLS manifest"""
+        if self.hls_manifest:
+            if settings.USE_S3_STORAGE:
+                return f"{settings.MEDIA_URL}{self.hls_manifest}"
+            return f"{settings.MEDIA_URL}{self.hls_manifest}"
+        return None
+
+    def get_file_manager(self):
+        """Get FileManager instance for this track"""
+        from utils.file_handlers import FileManager
+        return FileManager(self)
 
 
 class TrackDetail(models.Model):
@@ -167,42 +208,41 @@ class TrackDetail(models.Model):
 
 
 class Podcast(models.Model):
-    """Model for podcast shows"""
+    """Updated Podcast model with proper file paths"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True, db_index=True)
     slug = models.SlugField(max_length=255, unique=True)
     host = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='podcasts')
     description = models.TextField()
-    cover_image = models.ImageField(upload_to='podcasts/covers/')
 
-    # Podcast metadata
+    # Cover image with custom storage
+    cover_image = models.ImageField(
+        upload_to=podcast_cover_path,
+        storage=get_storage_backend('image'),
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+
     language = models.CharField(max_length=10, default='en')
     is_explicit = models.BooleanField(default=False)
     website = models.URLField(blank=True, null=True)
     rss_feed = models.URLField(blank=True, null=True)
 
-    # Categorization
     genres = models.ManyToManyField(Genre, related_name='podcasts')
 
-    # Stats
     subscriber_count = models.PositiveIntegerField(default=0)
     total_episodes = models.PositiveIntegerField(default=0)
 
-    # Status
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-subscriber_count', 'name']
 
     def __str__(self):
         return self.name
 
 
 class Album(models.Model):
-    """Model for albums, EPs, and mixtapes - aggregates tracks"""
+    """Updated Album model with proper file paths"""
     ALBUM_TYPE_CHOICES = [
         ('album', 'Album'),
         ('ep', 'EP'),
@@ -215,18 +255,22 @@ class Album(models.Model):
     album_type = models.CharField(max_length=20, choices=ALBUM_TYPE_CHOICES, default='album')
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name='albums')
 
-    # Album metadata
     description = models.TextField(blank=True, null=True)
-    cover_art = models.ImageField(upload_to='albums/covers/')
+
+    # Cover art with custom storage
+    cover_art = models.ImageField(
+        upload_to=album_cover_path,
+        storage=get_storage_backend('image'),
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+
     release_date = models.DateField()
     label = models.CharField(max_length=255, blank=True, null=True)
     copyright = models.CharField(max_length=255, blank=True, null=True)
-    upc = models.CharField(max_length=13, blank=True, null=True, unique=True, help_text="Universal Product Code")
+    upc = models.CharField(max_length=13, blank=True, null=True, unique=True)
 
-    # Categorization
     genres = models.ManyToManyField(Genre, related_name='albums')
 
-    # Stats
     play_count = models.PositiveIntegerField(default=0)
     like_count = models.PositiveIntegerField(default=0)
 
@@ -238,11 +282,6 @@ class Album(models.Model):
 
     class Meta:
         ordering = ['-release_date']
-        unique_together = ['artist', 'title']
-        indexes = [
-            models.Index(fields=['artist', '-release_date']),
-            models.Index(fields=['-play_count']),
-        ]
 
     def __str__(self):
         return f"{self.title} - {self.artist.stage_name}"
@@ -273,7 +312,7 @@ class Lyric(models.Model):
 
 
 class Playlist(models.Model):
-    """Model for user-created playlists"""
+    """Updated Playlist model with proper file paths"""
     PRIVACY_CHOICES = [
         ('public', 'Public'),
         ('private', 'Private'),
@@ -286,25 +325,24 @@ class Playlist(models.Model):
     description = models.TextField(blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='playlists')
 
-    # Playlist settings
-    cover_image = models.ImageField(upload_to='playlists/covers/', blank=True, null=True)
+    # Cover image with custom storage
+    cover_image = models.ImageField(
+        upload_to=playlist_cover_path,
+        blank=True,
+        null=True,
+        storage=get_storage_backend('image'),
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+
     privacy = models.CharField(max_length=20, choices=PRIVACY_CHOICES, default='public')
     is_collaborative = models.BooleanField(default=False)
     collaborators = models.ManyToManyField(User, related_name='collaborative_playlists', blank=True)
 
-    # Stats
     follower_count = models.PositiveIntegerField(default=0)
-    total_duration = models.PositiveIntegerField(default=0, help_text="Total duration in seconds")
+    total_duration = models.PositiveIntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['user', '-created_at']),
-            models.Index(fields=['privacy', '-follower_count']),
-        ]
 
     def __str__(self):
         return f"{self.name} by {self.user.name}"

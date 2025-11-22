@@ -5,7 +5,6 @@ from .models import (
     LikedAlbum, LikedPodcast, Comment, CommentLike,
     FollowArtist, FollowPlaylist
 )
-
 from django.contrib.auth import get_user_model
 
 User = get_user_model()

@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
 from django.db.models import Q, Count, F
 from django_filters.rest_framework import DjangoFilterBackend
-
 from .models import (
     Artist, Genre, Track, TrackDetail, Podcast, Album, Lyric,
     Playlist, PlaylistTrack, ListeningHistory, LikedTrack,

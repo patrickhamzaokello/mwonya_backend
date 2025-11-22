@@ -79,7 +79,7 @@ class ArtistAdmin(admin.ModelAdmin):
 
     def user_link(self, obj):
         if obj.user:
-            url = reverse('admin:creator_user_change', args=[obj.user.id])
+            url = reverse('admin:accounts_user_change', args=[obj.user.id])
             return format_html('<a href="{}">{}</a>', url, obj.user.name)
         return '-'
 
@@ -370,7 +370,7 @@ class LyricAdmin(admin.ModelAdmin):
 
     def transcribed_by_link(self, obj):
         if obj.transcribed_by:
-            url = reverse('admin:creator_user_change', args=[obj.transcribed_by.id])
+            url = reverse('admin:accounts_user_change', args=[obj.transcribed_by.id])
             return format_html('<a href="{}">{}</a>', url, obj.transcribed_by.name)
         return '-'
 
@@ -420,7 +420,7 @@ class PlaylistAdmin(admin.ModelAdmin):
     )
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'Owner'
@@ -459,7 +459,7 @@ class PlaylistTrackAdmin(admin.ModelAdmin):
 
     def added_by_link(self, obj):
         if obj.added_by:
-            url = reverse('admin:creator_user_change', args=[obj.added_by.id])
+            url = reverse('admin:accounts_user_change', args=[obj.added_by.id])
             return format_html('<a href="{}">{}</a>', url, obj.added_by.name)
         return '-'
 
@@ -476,7 +476,7 @@ class ListeningHistoryAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'User'
@@ -526,7 +526,7 @@ class CommentAdmin(admin.ModelAdmin):
     actions = ['pin_comments', 'unpin_comments', 'delete_comments']
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'User'
@@ -579,7 +579,7 @@ class LikedTrackAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'User'
@@ -601,7 +601,7 @@ class LikedAlbumAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'User'
@@ -623,7 +623,7 @@ class LikedPodcastAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'User'
@@ -645,7 +645,7 @@ class FollowArtistAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'User'
@@ -667,7 +667,7 @@ class FollowPlaylistAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'User'
@@ -689,7 +689,7 @@ class CommentLikeAdmin(admin.ModelAdmin):
     list_per_page = 100
 
     def user_link(self, obj):
-        url = reverse('admin:creator_user_change', args=[obj.user.id])
+        url = reverse('admin:accounts_user_change', args=[obj.user.id])
         return format_html('<a href="{}">{}</a>', url, obj.user.name)
 
     user_link.short_description = 'User'

@@ -9,6 +9,52 @@ from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+# Media files configuration
+MEDIA_ROOT = '/mnt/HC_Volume_103173495/mwonya_v2_assets'
+MEDIA_URL = '/media/'
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
+
+# Storage backend selection
+USE_S3_STORAGE = False  # Set to True when migrating to AWS
+
+# AWS S3 Configuration (uncomment when ready to use)
+if USE_S3_STORAGE:
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', 'mwonya-streaming')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-1')
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+
+    # Use S3 for media files
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+
+# HLS Processing settings
+HLS_SEGMENT_DURATION = 10  # seconds per segment
+HLS_QUALITIES = {
+    'high': {'bitrate': '320k', 'sample_rate': '48000'},
+    'med': {'bitrate': '192k', 'sample_rate': '44100'},
+    'low': {'bitrate': '128k', 'sample_rate': '44100'},
+}
+
+# Processing directories
+PROCESSING_LOG_DIR = os.path.join(MEDIA_ROOT, 'processing_logs')
+HLS_OUTPUT_DIR = os.path.join(MEDIA_ROOT, 'hls_output')
+
+# Allowed audio formats
+ALLOWED_AUDIO_EXTENSIONS = ['mp3', 'm4a', 'wav', 'flac', 'aac', 'ogg']
+ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
+
 DEBUG = config('DEBUG', default=False, cast=bool)
 SECRET_KEY = config('DJANGO_SECRET_KEY')
 SOCIAL_SECRET= config('SOCIAL_SECRET')
@@ -231,8 +277,6 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS =  [BASE_DIR / 'mwonya_static']
 STATIC_ROOT =  BASE_DIR / 'staticfiles'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Video processing settings
 VIDEO_UPLOAD_MAX_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
